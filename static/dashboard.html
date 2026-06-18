@@ -141,7 +141,8 @@
         <button type="button" onclick="pickDemo('admin@office.com','admin123')">Admin</button>
         <button type="button" onclick="pickDemo('director@office.com','welcome123')">Director</button>
       </div>
-      <button class="btn btn-primary" style="width:100%" onclick="login()">Login to Dashboard</button>
+      <button class="btn btn-primary" style="width:100%" id="loginBtn" onclick="login()">Login to Dashboard</button>
+      <p id="serverStatus" class="hint" style="margin-top:10px">Checking server...</p>
       <p class="hint" style="margin-top:12px">
         <a href="/" style="color:#60a5fa">← Home</a> ·
         <a href="/app" style="color:#60a5fa">Chat only</a>
@@ -333,6 +334,7 @@
 
   <script>
     const API = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
+    const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     let token = localStorage.getItem("copilot_token");
     let user = null;
     try {
@@ -352,7 +354,114 @@
       { id: "copilot", label: "Office Copilot", icon: "🤖", roles: "all" },
     ];
 
-    if (token && user) initApp();
+    let loggingIn = false;
+
+    bootstrap();
+
+    async function bootstrap() {
+      if (token && user) {
+        try {
+          await api("/me");
+          initApp();
+          return;
+        } catch {
+          token = null;
+          user = null;
+          localStorage.removeItem("copilot_token");
+          localStorage.removeItem("copilot_user");
+          localStorage.removeItem("copilot_user_obj");
+        }
+      }
+      wakeServer();
+    }
+
+    async function wakeServer() {
+      const status = document.getElementById("serverStatus");
+      if (!status) return;
+      for (let i = 0; i < 8; i++) {
+        try {
+          const res = await fetch(`${API}/health`, { cache: "no-store" });
+          if (res.ok) {
+            status.textContent = IS_LOCAL
+              ? "Server ready."
+              : "Server ready. Login may take 10–20 seconds on first try (free tier).";
+            return;
+          }
+        } catch {}
+        status.textContent = IS_LOCAL
+          ? "Start uvicorn, then refresh this page."
+          : `Waking server... (${i + 1}/8) — free Render can take up to 60 seconds.`;
+        await new Promise((r) => setTimeout(r, 8000));
+      }
+      status.textContent = IS_LOCAL
+        ? "Cannot reach server. Run: .\\venv\\Scripts\\uvicorn.exe app.main:app --reload"
+        : "Server is slow. Wait 30 seconds, then click Login again.";
+    }
+
+    async function login() {
+      if (loggingIn) return;
+      loggingIn = true;
+      const btn = document.getElementById("loginBtn");
+      const status = document.getElementById("serverStatus");
+      const body = new URLSearchParams();
+      body.append("username", document.getElementById("loginEmail").value);
+      body.append("password", document.getElementById("loginPassword").value);
+      if (btn) { btn.disabled = true; btn.textContent = "Logging in..."; }
+
+      let lastError = "";
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (status) {
+          status.textContent = `Logging in (attempt ${attempt}/3) — free tier can take 20 seconds...`;
+        }
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 60000);
+          const res = await fetch(`${API}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body,
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          const raw = await res.text();
+          let data;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            lastError = "Server still waking up. Retrying...";
+            await new Promise((r) => setTimeout(r, 5000));
+            continue;
+          }
+          if (!res.ok) {
+            alert(data.detail || "Login failed");
+            break;
+          }
+          token = data.access_token;
+          user = data.user;
+          localStorage.setItem("copilot_token", token);
+          localStorage.setItem("copilot_user", user.name);
+          localStorage.setItem("copilot_user_obj", JSON.stringify(user));
+          initApp();
+          loggingIn = false;
+          if (btn) { btn.disabled = false; btn.textContent = "Login to Dashboard"; }
+          return;
+        } catch (e) {
+          lastError = e.name === "AbortError"
+            ? "Login timed out. Retrying..."
+            : IS_LOCAL
+              ? "Cannot reach server. Run uvicorn first."
+              : "Server waking up. Retrying...";
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 5000));
+        }
+      }
+
+      if (status) {
+        status.textContent = lastError || "Login failed. Wait 30 seconds and try again.";
+      }
+      if (IS_LOCAL && lastError) alert(lastError);
+      loggingIn = false;
+      if (btn) { btn.disabled = false; btn.textContent = "Login to Dashboard"; }
+    }
 
     function pickDemo(email, password) {
       document.getElementById("loginEmail").value = email;
@@ -372,29 +481,6 @@
       try { data = JSON.parse(raw); } catch { data = raw; }
       if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : raw);
       return data;
-    }
-
-    async function login() {
-      const body = new URLSearchParams();
-      body.append("username", document.getElementById("loginEmail").value);
-      body.append("password", document.getElementById("loginPassword").value);
-      try {
-        const res = await fetch(`${API}/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body,
-        });
-        const data = await res.json();
-        if (!res.ok) { alert(data.detail || "Login failed"); return; }
-        token = data.access_token;
-        user = data.user;
-        localStorage.setItem("copilot_token", token);
-        localStorage.setItem("copilot_user", user.name);
-        localStorage.setItem("copilot_user_obj", JSON.stringify(user));
-        initApp();
-      } catch (e) {
-        alert("Cannot reach server. Run uvicorn first.");
-      }
     }
 
     function logout() {
