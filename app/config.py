@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/office.db"
     secret_key: str = "dev-secret-change-in-production"
     access_token_expire_minutes: int = 480
+    run_seed: bool = True
+    cors_origins: str = "http://127.0.0.1:8000,http://localhost:8000"
 
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
@@ -25,3 +27,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def get_cors_origins() -> list[str]:
+    return [o.strip() for o in settings.cors_origins.split(",") if o.strip()]

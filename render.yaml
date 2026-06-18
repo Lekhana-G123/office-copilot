@@ -1,0 +1,22 @@
+# Free tier: https://render.com/docs/free
+# Pair with free Postgres from https://neon.tech (see DEPLOY.md)
+services:
+  - type: web
+    name: office-copilot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: RUN_SEED
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
