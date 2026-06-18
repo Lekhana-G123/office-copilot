@@ -39,6 +39,7 @@ git push
 | `GROQ_API_KEY` | Your Groq API key |
 | `RUN_SEED` | `true` (first deploy only; demo users load once) |
 | `CORS_ORIGINS` | `https://YOUR-APP-NAME.onrender.com` |
+| `PYTHON_VERSION` | `3.12.7` **(required — avoids build failure)** |
 
 Replace `YOUR-APP-NAME` with your actual Render service name after create.
 
