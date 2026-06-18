@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Office Copilot</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .wrap { max-width: 520px; width: 100%; text-align: center; }
+    h1 { font-size: 2rem; margin-bottom: 8px; }
+    .sub { color: #94a3b8; margin-bottom: 32px; line-height: 1.5; }
+    .cards { display: grid; gap: 16px; margin-bottom: 28px; }
+    a.card {
+      display: block;
+      padding: 24px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    a.card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+    a.card strong { display: block; font-size: 1.15rem; margin-bottom: 6px; }
+    a.card span { color: #94a3b8; font-size: 0.9rem; }
+    .hint {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.6;
+      text-align: left;
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #334155;
+    }
+    code { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Office Copilot</h1>
+    <p class="sub">Workplace assistant for tasks, meetings, rooms, and leave.</p>
+    <div class="cards">
+      <a class="card" href="/dashboard">
+        <strong>📊 Dashboard</strong>
+        <span>Tasks, meetings, leaves, team view — best starting point</span>
+      </a>
+      <a class="card" href="/app">
+        <strong>💬 Chat only</strong>
+        <span>Talk to Office Copilot in a simple chat window</span>
+      </a>
+      <a class="card" href="/docs">
+        <strong>📖 API docs</strong>
+        <span>Swagger UI for developers</span>
+      </a>
+    </div>
+    <div class="hint">
+      <strong>Start the server (PowerShell):</strong><br>
+      <code>Set-Location "C:\Users\LekhanaG\Desktop\office-copilot"</code><br>
+      <code>.\venv\Scripts\uvicorn.exe app.main:app --reload</code><br><br>
+      <strong>Demo logins:</strong> intern@office.com / intern123 · manager@office.com / mgr123 · ea@office.com / ea123 · admin@office.com / admin123
+    </div>
+  </div>
+</body>
+</html>

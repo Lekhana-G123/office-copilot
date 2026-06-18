@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Office Copilot — Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0b1220;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .login-wrap {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      width: 100%; max-width: 400px; background: #1e293b; border-radius: 16px;
+      padding: 32px; border: 1px solid #334155;
+    }
+    .login-card h1 { font-size: 1.4rem; margin-bottom: 8px; }
+    .login-card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 24px; }
+    label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; margin-bottom: 14px;
+      border: 1px solid #475569; border-radius: 8px;
+      background: #0f172a; color: #e2e8f0; font-size: 0.95rem;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .btn {
+      padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 500;
+    }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #475569; }
+    .hint { font-size: 0.8rem; color: #64748b; margin-top: 12px; line-height: 1.5; }
+
+    .app { display: none; min-height: 100vh; }
+    .app.active { display: flex; }
+
+    .sidebar {
+      width: 220px; background: #111827; border-right: 1px solid #334155;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .brand { padding: 20px; border-bottom: 1px solid #334155; }
+    .brand h2 { font-size: 1.1rem; }
+    .brand p { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+    .nav { flex: 1; padding: 12px; overflow-y: auto; }
+    .nav button {
+      width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 4px;
+      background: transparent; border: none; color: #cbd5e1; border-radius: 8px;
+      cursor: pointer; font-size: 0.9rem;
+    }
+    .nav button:hover { background: #1f2937; }
+    .nav button.active { background: #1d4ed8; color: white; }
+    .sidebar-footer { padding: 16px; border-top: 1px solid #334155; }
+    .profile-mini { font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px; line-height: 1.4; }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      padding: 16px 24px; background: #1e293b; border-bottom: 1px solid #334155;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .content {
+      flex: 1; overflow-y: auto; padding: 24px;
+    }
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px;
+    }
+    .card h3 { font-size: 0.95rem; color: #94a3b8; margin-bottom: 12px; font-weight: 500; }
+    .stat { font-size: 1.8rem; font-weight: 700; color: #60a5fa; }
+    .list { list-style: none; }
+    .list li {
+      padding: 10px 0; border-bottom: 1px solid #334155; font-size: 0.9rem; line-height: 1.4;
+    }
+    .list li:last-child { border-bottom: none; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 0.7rem; background: #334155; color: #cbd5e1; margin-left: 6px;
+    }
+    .badge.open { background: #1e3a5f; color: #93c5fd; }
+    .badge.overdue { background: #7f1d1d; color: #fecaca; }
+    .badge.done { background: #14532d; color: #86efac; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } .sidebar { width: 64px; } .brand p, .nav button span { display: none; } }
+
+    /* Copilot tab */
+    .copilot-wrap {
+      display: flex; flex-direction: column; height: calc(100vh - 130px);
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden;
+    }
+    .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid #334155; }
+    .quick-actions button {
+      padding: 6px 12px; border-radius: 999px; border: 1px solid #475569;
+      background: #334155; color: #e2e8f0; font-size: 0.8rem; cursor: pointer;
+    }
+    .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 85%; padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; white-space: pre-wrap; line-height: 1.45; }
+    .msg.user { align-self: flex-end; background: #2563eb; }
+    .msg.bot { align-self: flex-start; background: #334155; border: 1px solid #475569; }
+    .msg.error { align-self: center; background: #7f1d1d; color: #fecaca; font-size: 0.85rem; }
+    .chat-input { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #334155; }
+    .chat-input input { flex: 1; margin: 0; }
+    .demo-picks { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .demo-picks button {
+      padding: 6px 10px; border: 1px solid #475569; border-radius: 8px;
+      background: #334155; color: #cbd5e1; font-size: 0.75rem; cursor: pointer;
+    }
+    .demo-picks button:hover { background: #475569; }
+    .action-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+    .btn-approve { background: #16a34a; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-decline { background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .top-links a { color: #60a5fa; font-size: 0.85rem; margin-left: 12px; text-decoration: none; }
+    .empty { color: #64748b; font-size: 0.9rem; padding: 8px 0; }
+  </style>
+</head>
+<body>
+
+  <div class="login-wrap" id="loginWrap">
+    <div class="login-card">
+      <h1>Office Copilot</h1>
+      <p>Sign in to your workplace dashboard</p>
+      <label>Email</label>
+      <input type="email" id="loginEmail" value="intern@office.com" />
+      <label>Password</label>
+      <input type="password" id="loginPassword" value="intern123" />
+      <p class="hint" style="margin-top:0;margin-bottom:8px">Quick pick:</p>
+      <div class="demo-picks">
+        <button type="button" onclick="pickDemo('intern@office.com','intern123')">Intern</button>
+        <button type="button" onclick="pickDemo('manager@office.com','mgr123')">Manager</button>
+        <button type="button" onclick="pickDemo('ea@office.com','ea123')">EA</button>
+        <button type="button" onclick="pickDemo('admin@office.com','admin123')">Admin</button>
+        <button type="button" onclick="pickDemo('director@office.com','welcome123')">Director</button>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="login()">Login to Dashboard</button>
+      <p class="hint" style="margin-top:12px">
+        <a href="/" style="color:#60a5fa">← Home</a> ·
+        <a href="/app" style="color:#60a5fa">Chat only</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="app" id="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <h2>Office Copilot</h2>
+        <p id="sidebarRole">—</p>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-footer">
+        <div class="profile-mini" id="profileMini"></div>
+        <button class="btn btn-ghost" style="width:100%" onclick="logout()">Logout</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1 id="pageTitle">Overview</h1>
+        <span class="top-links">
+          <span id="topDate" style="color:#94a3b8;font-size:0.85rem"></span>
+          <a href="/">Home</a>
+          <a href="/app">Chat</a>
+        </span>
+      </header>
+
+      <div class="content">
+
+        <!-- OVERVIEW -->
+        <section class="tab active" id="tab-overview">
+          <div class="grid" id="overviewStats"></div>
+          <div class="grid">
+            <div class="card">
+              <h3>My Profile</h3>
+              <ul class="list" id="profileList"></ul>
+            </div>
+            <div class="card">
+              <h3>My Manager</h3>
+              <ul class="list" id="managerList"></ul>
+            </div>
+            <div class="card" id="teamCard">
+              <h3>Team Members</h3>
+              <ul class="list" id="teamList"></ul>
+            </div>
+            <div class="card">
+              <h3>Announcements</h3>
+              <ul class="list" id="announcementList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- TASKS -->
+        <section class="tab" id="tab-tasks">
+          <div class="grid">
+            <div class="card" style="grid-column: 1 / -1">
+              <h3>My Tasks</h3>
+              <ul class="list" id="taskList"></ul>
+            </div>
+            <div class="card manager-only" id="assignCard" style="grid-column: 1 / -1">
+              <h3>Assign Task (Manager)</h3>
+              <div class="form-row">
+                <div>
+                  <label>Assignee email</label>
+                  <input id="assignEmail" placeholder="intern@office.com" />
+                </div>
+                <div>
+                  <label>Due date</label>
+                  <input id="assignDue" type="date" />
+                </div>
+              </div>
+              <label>Title</label>
+              <input id="assignTitle" placeholder="Prepare test data" />
+              <label>Description</label>
+              <textarea id="assignDesc"></textarea>
+              <label>Priority</label>
+              <select id="assignPriority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+              <button class="btn btn-primary" onclick="assignTask()">Assign Task</button>
+              <p id="assignMsg" class="hint"></p>
+            </div>
+            <div class="card manager-only" style="grid-column: 1 / -1">
+              <h3>Team Task Summary</h3>
+              <div id="teamTaskSummary"></div>
+              <ul class="list" id="overdueList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- MEETINGS -->
+        <section class="tab" id="tab-meetings">
+          <div class="grid">
+            <div class="card">
+              <h3>Meetings I'm Invited To</h3>
+              <ul class="list" id="meetingList"></ul>
+            </div>
+            <div class="card">
+              <h3>My Room Bookings</h3>
+              <ul class="list" id="roomList"></ul>
+            </div>
+            <div class="card">
+              <h3>All Rooms</h3>
+              <ul class="list" id="allRoomsList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- LEAVES -->
+        <section class="tab" id="tab-leaves">
+          <div class="grid">
+            <div class="card">
+              <h3>My Upcoming Leave</h3>
+              <ul class="list" id="myLeaveList"></ul>
+            </div>
+            <div class="card manager-only admin-only">
+              <h3>Team / Org Leaves (approved)</h3>
+              <ul class="list" id="orgLeaveList"></ul>
+            </div>
+            <div class="card">
+              <h3>Request Leave</h3>
+              <label>Start date</label>
+              <input type="date" id="leaveStart" />
+              <label>End date</label>
+              <input type="date" id="leaveEnd" />
+              <label>Reason</label>
+              <textarea id="leaveReason" placeholder="Personal / exam / holiday"></textarea>
+              <button class="btn btn-primary" onclick="requestLeave()">Submit Leave Request</button>
+              <p id="leaveMsg" class="hint"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- DIRECTOR -->
+        <section class="tab" id="tab-director">
+          <div class="grid" id="directorGrid"></div>
+        </section>
+
+        <!-- HR -->
+        <section class="tab" id="tab-hr">
+          <div class="grid" id="hrGrid"></div>
+        </section>
+
+        <!-- REQUESTS (EA / Admin) -->
+        <section class="tab" id="tab-requests">
+          <div class="grid">
+            <div class="card" style="grid-column: 1 / -1">
+              <h3>Pending Meeting Requests</h3>
+              <ul class="list" id="meetingRequestList"></ul>
+            </div>
+            <div class="card manager-only admin-only" style="grid-column: 1 / -1">
+              <h3>Pending Leave Requests</h3>
+              <ul class="list" id="pendingLeaveList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- COPILOT -->
+        <section class="tab" id="tab-copilot">
+          <div class="copilot-wrap">
+            <div class="quick-actions">
+              <button onclick="sendQuick('show my tasks')">My tasks</button>
+              <button onclick="sendQuick('show team status')" class="manager-only-btn">Team status</button>
+              <button onclick="sendQuick('list rooms')">List rooms</button>
+              <button onclick="sendQuick('book room A for 3-7pm')">Book room</button>
+              <button onclick="sendQuick('is intern available today')">Intern availability</button>
+              <button onclick="sendQuick('assign task Prepare test data to You (Intern) due tomorrow')" class="manager-only-btn">Assign task</button>
+              <button onclick="sendQuick('is Director Kumar available tomorrow')">Director availability</button>
+            </div>
+            <div class="messages" id="messages">
+              <div class="msg bot">Hello! I'm Office Copilot. Ask me about tasks, meetings, rooms, or availability.</div>
+            </div>
+            <div class="chat-input">
+              <input type="text" id="chatInput" placeholder="Ask anything..."
+                onkeydown="if(event.key==='Enter') sendMessage()" />
+              <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
+    let token = localStorage.getItem("copilot_token");
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem("copilot_user_obj") || "null");
+    } catch {
+      localStorage.removeItem("copilot_user_obj");
+    }
+
+    const NAV = [
+      { id: "overview", label: "Overview", icon: "📊", roles: "all" },
+      { id: "tasks", label: "Tasks", icon: "✅", roles: "all" },
+      { id: "meetings", label: "Meetings", icon: "📅", roles: "all" },
+      { id: "leaves", label: "Leaves", icon: "🌴", roles: "all" },
+      { id: "requests", label: "Approvals", icon: "📋", roles: ["ea", "admin", "manager"] },
+      { id: "director", label: "Director View", icon: "🏢", roles: ["executive", "admin"] },
+      { id: "hr", label: "HR Admin", icon: "👥", roles: ["admin"] },
+      { id: "copilot", label: "Office Copilot", icon: "🤖", roles: "all" },
+    ];
+
+    if (token && user) initApp();
+
+    function pickDemo(email, password) {
+      document.getElementById("loginEmail").value = email;
+      document.getElementById("loginPassword").value = password;
+    }
+
+    async function api(path, opts = {}) {
+      const headers = { ...(opts.headers || {}) };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (opts.body && typeof opts.body === "object" && !(opts.body instanceof URLSearchParams)) {
+        headers["Content-Type"] = "application/json";
+        opts.body = JSON.stringify(opts.body);
+      }
+      const res = await fetch(`${API}${path}`, { ...opts, headers });
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { data = raw; }
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : raw);
+      return data;
+    }
+
+    async function login() {
+      const body = new URLSearchParams();
+      body.append("username", document.getElementById("loginEmail").value);
+      body.append("password", document.getElementById("loginPassword").value);
+      try {
+        const res = await fetch(`${API}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.detail || "Login failed"); return; }
+        token = data.access_token;
+        user = data.user;
+        localStorage.setItem("copilot_token", token);
+        localStorage.setItem("copilot_user", user.name);
+        localStorage.setItem("copilot_user_obj", JSON.stringify(user));
+        initApp();
+      } catch (e) {
+        alert("Cannot reach server. Run uvicorn first.");
+      }
+    }
+
+    function logout() {
+      token = null; user = null;
+      localStorage.removeItem("copilot_token");
+      localStorage.removeItem("copilot_user");
+      localStorage.removeItem("copilot_user_obj");
+      document.getElementById("app").classList.remove("active");
+      document.getElementById("loginWrap").style.display = "flex";
+    }
+
+    function hasRole(roles) {
+      if (roles === "all") return true;
+      return roles.includes(user.role);
+    }
+
+    function initApp() {
+      document.getElementById("loginWrap").style.display = "none";
+      document.getElementById("app").classList.add("active");
+      document.getElementById("sidebarRole").textContent = `${user.role} · ${user.department}`;
+      document.getElementById("profileMini").innerHTML = `<strong>${user.name}</strong><br>${user.email}`;
+      document.getElementById("topDate").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+      const nav = document.getElementById("nav");
+      nav.innerHTML = "";
+      NAV.filter(n => hasRole(n.roles)).forEach(n => {
+        const btn = document.createElement("button");
+        btn.innerHTML = `<span>${n.icon} ${n.label}</span>`;
+        btn.onclick = () => showTab(n.id, n.label, btn);
+        nav.appendChild(btn);
+        if (n.id === "overview") btn.classList.add("active");
+      });
+
+      document.querySelectorAll(".manager-only").forEach(el => {
+        el.style.display = ["manager", "admin"].includes(user.role) ? "block" : "none";
+      });
+      document.querySelectorAll(".manager-only-btn").forEach(el => {
+        el.style.display = ["manager", "admin"].includes(user.role) ? "inline-block" : "none";
+      });
+      document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = user.role === "admin" ? "block" : "none";
+      });
+
+      loadDashboard();
+      loadCopilotChat();
+    }
+
+    const COPILOT_GREETING = "Hello! I'm Office Copilot. Ask me about tasks, meetings, rooms, or availability.";
+
+    function chatStorageKey() {
+      return `copilot_chat_${user?.email || "guest"}`;
+    }
+
+    function loadCopilotChat() {
+      const box = document.getElementById("messages");
+      const saved = localStorage.getItem(chatStorageKey());
+      box.innerHTML = saved || `<div class="msg bot">${COPILOT_GREETING}</div>`;
+    }
+
+    function saveCopilotChat() {
+      if (user) {
+        localStorage.setItem(chatStorageKey(), document.getElementById("messages").innerHTML);
+      }
+    }
+
+    function showTab(id, title, btn) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.getElementById(`tab-${id}`).classList.add("active");
+      document.getElementById("pageTitle").textContent = title;
+      document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+    }
+
+    function li(html) { return `<li>${html}</li>`; }
+    function empty(msg) { return `<p class="empty">${msg}</p>`; }
+
+    async function loadDashboard() {
+      try {
+        const [me, manager, teammates, announcements, dash, rooms] = await Promise.all([
+          api("/me"),
+          api("/users/me/manager").catch(() => ({ manager: null })),
+          api("/users/me/teammates").catch(() => []),
+          api("/announcements"),
+          api("/dashboard/me"),
+          api("/rooms"),
+        ]);
+
+        // Profile
+        document.getElementById("profileList").innerHTML = [
+          li(`<strong>${me.name}</strong>`),
+          li(`Email: ${me.email}`),
+          li(`Role: <span class="badge">${me.role}</span>`),
+          li(`Department: ${me.department}`),
+        ].join("");
+
+        // Manager
+        document.getElementById("managerList").innerHTML = manager.manager
+          ? [li(`<strong>${manager.manager.name}</strong>`), li(manager.manager.email), li(manager.manager.role)]
+          : [li("No manager assigned")];
+
+        // Teammates
+        const teamCard = document.getElementById("teamCard");
+        if (user.role === "manager" || user.role === "admin") {
+          teamCard.querySelector("h3").textContent = "My Team (direct reports)";
+          try {
+            const team = await api("/users/me/team");
+            document.getElementById("teamList").innerHTML = team.length
+              ? team.map(m => li(`<strong>${m.name}</strong> <span class="badge">${m.role}</span><br><small>${m.email}</small>`)).join("")
+              : li("No direct reports");
+          } catch { document.getElementById("teamList").innerHTML = li("—"); }
+        } else {
+          document.getElementById("teamList").innerHTML = teammates.length
+            ? teammates.map(t => li(`<strong>${t.name}</strong> · ${t.department}`)).join("")
+            : li("No teammates listed");
+        }
+
+        // Announcements
+        document.getElementById("announcementList").innerHTML = announcements.length
+          ? announcements.map(a => li(`<strong>${a.title}</strong><br>${a.body}`)).join("")
+          : li("No announcements");
+
+        // Overview stats
+        const openTasks = dash.tasks.filter(t => t.status !== "done").length;
+        document.getElementById("overviewStats").innerHTML = `
+          <div class="card"><h3>My Open Tasks</h3><div class="stat">${openTasks}</div></div>
+          <div class="card"><h3>Upcoming Meetings</h3><div class="stat">${dash.meetings.length}</div></div>
+          <div class="card"><h3>Room Bookings</h3><div class="stat">${dash.room_bookings.length}</div></div>
+          <div class="card"><h3>My Leaves</h3><div class="stat">${dash.upcoming_leaves.length}</div></div>
+        `;
+
+        // Tasks tab
+        document.getElementById("taskList").innerHTML = dash.tasks.length
+          ? dash.tasks.map(t => li(`<strong>${t.title}</strong> <span class="badge ${t.status}">${t.status}</span><br>Priority: ${t.priority} · Due: ${t.due_date || "—"}`)).join("")
+          : empty("No tasks");
+
+        // Meetings tab
+        document.getElementById("meetingList").innerHTML = dash.meetings.length
+          ? dash.meetings.map(m => li(
+              `<strong>${m.title}</strong>${m.room ? ` <span class="badge">📍 ${m.room}</span>` : ""}<br>${fmtDt(m.start)} → ${fmtDt(m.end)}`
+            )).join("")
+          : empty("No meetings");
+        document.getElementById("roomList").innerHTML = dash.room_bookings.length
+          ? dash.room_bookings.map(b => li(
+              `<strong>${b.title}</strong> <span class="badge">📍 ${b.room || "Room"}</span><br>${fmtDt(b.start)} → ${fmtDt(b.end)}`
+            )).join("")
+          : empty("No room bookings");
+        document.getElementById("allRoomsList").innerHTML = rooms.rooms.map(r =>
+          li(`<strong>${r.name}</strong> · cap ${r.capacity} · ${r.type}`)
+        ).join("");
+
+        // Leaves tab
+        document.getElementById("myLeaveList").innerHTML = dash.upcoming_leaves.length
+          ? dash.upcoming_leaves.map(l => li(`${fmtDt(l.start)} → ${fmtDt(l.end)} <span class="badge">${l.status}</span>`)).join("")
+          : empty("No upcoming leave");
+
+        if (["manager", "admin"].includes(user.role)) {
+          const leaves = await api("/leaves/upcoming");
+          document.getElementById("orgLeaveList").innerHTML = leaves.length
+            ? leaves.map(l => li(`<strong>${l.user}</strong><br>${fmtDt(l.start_date)} → ${fmtDt(l.end_date)}`)).join("")
+            : empty("No approved leaves in range");
+        }
+
+        // Manager team summary
+        if (["manager", "admin"].includes(user.role)) {
+          try {
+            const team = await api("/dashboard/team");
+            document.getElementById("teamTaskSummary").innerHTML = `
+              <p>Open: <strong>${team.task_summary.open}</strong> ·
+              In progress: <strong>${team.task_summary.in_progress}</strong> ·
+              Done: <strong>${team.task_summary.done}</strong> ·
+              Overdue: <strong style="color:#f87171">${team.task_summary.overdue}</strong></p>
+            `;
+            document.getElementById("overdueList").innerHTML = team.behind_schedule.length
+              ? team.behind_schedule.map(t => li(`<span class="badge overdue">overdue</span> <strong>${t.title}</strong> (task #${t.task_id})`)).join("")
+              : li("No overdue team tasks 🎉");
+          } catch (e) { /* admin may not have team */ }
+        }
+
+        // Director tab
+        if (["executive", "admin"].includes(user.role)) {
+          try {
+            const dir = await api("/dashboard/director");
+            let deptHtml = Object.entries(dir.tasks_by_department).map(([dept, s]) =>
+              `<div class="card"><h3>${dept}</h3><p>Open: ${s.open} · In progress: ${s.in_progress} · Done: ${s.done}</p></div>`
+            ).join("");
+            let meetHtml = dir.major_meetings.map(m =>
+              li(`<strong>${m.title}</strong><br>${fmtDt(m.start)}`)
+            ).join("");
+            document.getElementById("directorGrid").innerHTML = deptHtml +
+              `<div class="card" style="grid-column:1/-1"><h3>Major Meetings</h3><ul class="list">${meetHtml}</ul></div>`;
+          } catch (e) { document.getElementById("directorGrid").innerHTML = empty("Director data unavailable"); }
+        }
+
+        // HR tab
+        if (user.role === "admin") {
+          const hr = await api("/dashboard/hr");
+          document.getElementById("hrGrid").innerHTML = `
+            <div class="card"><h3>Total Users</h3><div class="stat">${hr.total_users}</div></div>
+            <div class="card"><h3>Pending Leave Requests</h3><div class="stat">${hr.pending_leave_requests}</div></div>
+            <div class="card"><h3>Pending Meeting Requests</h3><div class="stat">${hr.pending_meeting_requests}</div></div>
+            <div class="card"><h3>Rooms</h3><div class="stat">${hr.rooms}</div></div>
+            <div class="card" style="grid-column:1/-1"><h3>Users by Role</h3>
+              <ul class="list">${Object.entries(hr.users_by_role).map(([r,c]) => li(`${r}: <strong>${c}</strong>`)).join("")}</ul>
+            </div>
+          `;
+        }
+
+        await loadRequests();
+      } catch (e) {
+        alert("Failed to load dashboard: " + e.message);
+        if (e.message.includes("credentials")) logout();
+      }
+    }
+
+    async function loadRequests() {
+      if (!["ea", "admin", "manager"].includes(user.role)) return;
+
+      if (["ea", "admin"].includes(user.role)) {
+        try {
+          const requests = await api("/meeting-requests");
+          const pending = requests.filter(r => r.status === "pending");
+          const users = await api("/users").catch(() => []);
+          const byId = Object.fromEntries(users.map(u => [u.id, u.name]));
+          document.getElementById("meetingRequestList").innerHTML = pending.length
+            ? pending.map(r => li(`
+                <strong>#${r.id}</strong> ${byId[r.requester_id] || "Requester"} → ${byId[r.target_person_id] || "Executive"}<br>
+                ${r.reason}<br>
+                <small>${fmtDt(r.proposed_start)} → ${fmtDt(r.proposed_end)}</small>
+                <div class="action-row">
+                  <button class="btn-approve btn-sm" onclick="reviewMeeting(${r.id},'approve')">Approve</button>
+                  <button class="btn-decline btn-sm" onclick="reviewMeeting(${r.id},'decline')">Decline</button>
+                </div>
+              `)).join("")
+            : empty("No pending meeting requests");
+        } catch (e) {
+          document.getElementById("meetingRequestList").innerHTML = empty("Could not load meeting requests");
+        }
+      } else {
+        document.getElementById("meetingRequestList").innerHTML = empty("Meeting approvals are for EA/Admin");
+      }
+
+      if (["manager", "admin"].includes(user.role)) {
+        try {
+          const pending = await api("/leaves/pending");
+          document.getElementById("pendingLeaveList").innerHTML = pending.length
+            ? pending.map(l => li(`
+                <strong>${l.user}</strong> (${l.user_email})<br>
+                ${fmtDt(l.start_date)} → ${fmtDt(l.end_date)}<br>
+                <em>${l.reason || "—"}</em>
+                <div class="action-row">
+                  <button class="btn-approve btn-sm" onclick="reviewLeave(${l.id},'approve')">Approve</button>
+                  <button class="btn-decline btn-sm" onclick="reviewLeave(${l.id},'decline')">Decline</button>
+                </div>
+              `)).join("")
+            : empty("No pending leave requests");
+        } catch (e) {
+          document.getElementById("pendingLeaveList").innerHTML = empty("Could not load leave requests");
+        }
+      }
+    }
+
+    async function reviewMeeting(id, action) {
+      try {
+        const data = await api(`/meeting-requests/review?request_id=${id}&action=${action}`, { method: "POST" });
+        alert(action === "approve"
+          ? `Approved — meeting #${data.meeting_id || "?"} added to calendar`
+          : "Meeting request declined");
+        loadDashboard();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function reviewLeave(id, action) {
+      try {
+        await api("/leaves/review", { method: "POST", body: { leave_id: id, action } });
+        alert(`Leave ${action}d`);
+        loadDashboard();
+      } catch (e) { alert(e.message); }
+    }
+
+    function fmtDt(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    async function assignTask() {
+      const msg = document.getElementById("assignMsg");
+      try {
+        const data = await api("/tasks/assign", {
+          method: "POST",
+          body: {
+            assignee_email: document.getElementById("assignEmail").value,
+            title: document.getElementById("assignTitle").value,
+            description: document.getElementById("assignDesc").value,
+            priority: document.getElementById("assignPriority").value,
+            due_date: document.getElementById("assignDue").value,
+          },
+        });
+        msg.textContent = `Assigned to ${data.assignee} (task #${data.task_id})`;
+        loadDashboard();
+      } catch (e) { msg.textContent = e.message; }
+    }
+
+    async function requestLeave() {
+      const msg = document.getElementById("leaveMsg");
+      try {
+        const data = await api("/leaves/request", {
+          method: "POST",
+          body: {
+            user_email: user.email,
+            start_date: document.getElementById("leaveStart").value,
+            end_date: document.getElementById("leaveEnd").value,
+            leave_type: "leave",
+            reason: document.getElementById("leaveReason").value,
+          },
+        });
+        msg.textContent = `Leave request submitted (#${data.leave_id})`;
+        loadDashboard();
+      } catch (e) { msg.textContent = e.message; }
+    }
+
+    function addMessage(role, text) {
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      div.textContent = text;
+      document.getElementById("messages").appendChild(div);
+      div.scrollIntoView({ behavior: "smooth" });
+      saveCopilotChat();
+    }
+
+    function sendQuick(text) {
+      document.getElementById("chatInput").value = text;
+      sendMessage();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("chatInput");
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      addMessage("user", text);
+      addMessage("bot", "Thinking...");
+      const thinking = document.getElementById("messages").lastChild;
+      try {
+        const data = await api("/chat", { method: "POST", body: { message: text } });
+        thinking.remove();
+        addMessage("bot", data.reply || "No response.");
+        if (/booked/i.test(data.reply || "")) {
+          loadDashboard();
+        }
+      } catch (e) {
+        thinking.remove();
+        addMessage("error", e.message);
+      }
+    }
+  </script>
+</body>
+</html>
